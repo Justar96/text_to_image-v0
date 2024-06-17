@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+Real-ESRGAN/
 build/
 develop-eggs/
 dist/
