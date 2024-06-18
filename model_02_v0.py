@@ -1,18 +1,25 @@
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, KDPM2DiscreteScheduler
+from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
 import torch
 import os
 import gradio as gr
 
-# Model ID
-model_id = "sam749/ICBINP-New-Year"
+# Model ID and local directory
+model_id = "SG161222/RealVisXL_V4.0_Lightning"
 
 # Load the pipeline
-pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16, cache_dir="D:/Huggingface Model")
-pipe = pipe.to("cuda")
+try:
+    pipe = StableDiffusionXLPipeline.from_pretrained(model_id, torch_dtype=torch.float16, cache_dir="D:/Huggingface Model")
+    pipe = pipe.to("cuda")
+    print("Pipeline loaded successfully")
+except Exception as e:
+    print(f"Error loading pipeline: {e}")
 
-# Placeholder for DPM++ 2M Karras sampler
-# pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-pipe.scheduler = KDPM2DiscreteScheduler.from_config(pipe.scheduler.config)
+# Set scheduler to DPMSolverMultistepScheduler
+try:
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    print("Scheduler set successfully")
+except Exception as e:
+    print(f"Error setting scheduler: {e}")
 
 # Define the prompt and negative prompt
 default_prompt = "powerful raw portrait photo of a man,dark scene,window light, 22 y.o. , natural eyes, natural skin, hard shadows, authentic high film grain, still 22mm photo"
@@ -21,12 +28,18 @@ default_negative_prompt = "(octane render, render, drawing, anime, bad photo, ba
 # Function to generate image
 def generate_image(prompt, negative_prompt, num_inference_steps, guidance_scale, seed, height, width):
     generator = torch.Generator(device="cuda").manual_seed(seed) if seed else None
-    with torch.no_grad():
-        image = pipe(prompt, num_inference_steps=num_inference_steps, guidance_scale=guidance_scale, generator=generator, height=height, width=width, negative_prompt=negative_prompt).images[0]
-    return image
+    try:
+        with torch.no_grad():
+            output = pipe(prompt, num_inference_steps=num_inference_steps, guidance_scale=guidance_scale, generator=generator, height=height, width=width, negative_prompt=negative_prompt)
+            image = output.images[0]
+            print("Image generated successfully")
+            return image
+    except Exception as e:
+        print(f"Error during image generation: {e}")
+        return None
 
 # Function to save image with automatic renaming
-def save_image(image, base_name, extension="png"):
+def save_image(image, base_name, extension="jpg"):
     file_name = f"{base_name}.{extension}"
     counter = 1
     while os.path.exists(file_name):
@@ -37,8 +50,12 @@ def save_image(image, base_name, extension="png"):
 
 # Define the Gradio interface
 def gradio_interface(prompt=default_prompt, negative_prompt=default_negative_prompt, num_inference_steps=35, guidance_scale=5.0, seed=52454212, height=640, width=960):
+    print(f"Generating image with prompt: {prompt}")
+    print(f"Negative prompt: {negative_prompt}")
+    print(f"Steps: {num_inference_steps}, Guidance Scale: {guidance_scale}, Seed: {seed}, Height: {height}, Width: {width}")
     image = generate_image(prompt, negative_prompt, num_inference_steps, guidance_scale, seed, height, width)
-    save_image(image, "img/model-01/model01-photo_")
+    if image:
+        save_image(image, "img/model-02/model02-photo_")
     return image
 
 # Create Gradio interface
